@@ -21,7 +21,10 @@ std::string to_string( const std::optional<T>& v )
 } // namespace minnow_conversions
 
 template<typename T>
-concept MinnowStringable = requires( T t ) { minnow_conversions::to_string( t ); };
+concept MinnowStringable = requires( T t )
+{
+  minnow_conversions::to_string( t );
+};
 
 template<MinnowStringable T>
 std::string to_string( T&& t )
