@@ -33,7 +33,7 @@ bool Writer::is_closed() const
 uint64_t Writer::available_capacity() const
 {
   // Your code here.
-  return capacity_ - bytes_written;
+  return capacity_ - buffer.size();
 }
 
 uint64_t Writer::bytes_pushed() const
@@ -71,7 +71,7 @@ void Reader::pop( uint64_t len )
 bool Reader::is_finished() const
 {
   // Your code here.
-  return writer().is_closed() && bytes_written == bytes_read;
+  return writer().is_closed() && bytes_read == bytes_written;
 }
 
 uint64_t Reader::bytes_popped() const
