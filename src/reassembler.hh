@@ -1,6 +1,8 @@
 #pragma once
 
 #include "byte_stream.hh"
+#include <map>
+#include <unordered_map>
 
 class Reassembler
 {
@@ -42,4 +44,11 @@ public:
 
 private:
   ByteStream output_; // the Reassembler writes to this ByteStream
+
+  // additional attributes
+  uint64_t _capacity{output_.writer().available_capacity()};
+  uint64_t _next_index{0}; // The index of the next byte expected in the stream
+  std::map<size_t, char> _wait_map{};  // byte streams to be assembled.
+  uint64_t next(uint64_t ptr) {return (ptr + 1) % _capacity;}
+  bool _should_eof{ false};
 };
