@@ -64,7 +64,7 @@ int main()
       test.execute( BytesPushed( 1 ) );
       test.execute( BytesPending( 0 ) );
 
-      test.execute( Insert { "abc", 0 } );
+      test.execute( Insert { "abc", 0} );
       test.execute( BytesPushed( 2 ) );
       test.execute( BytesPending( 0 ) );
 
