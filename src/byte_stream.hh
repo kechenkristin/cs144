@@ -28,10 +28,10 @@ protected:
   bool error_ {};
 
   // additional attributes
-  bool close_flag{ false};
-  std::deque<char> buffer{};
-  uint64_t bytes_read{0};
-  uint64_t bytes_written{0};
+  bool close_flag { false };
+  std::deque<char> buffer {};
+  uint64_t bytes_read { 0 };
+  uint64_t bytes_written { 0 };
 };
 
 class Writer : public ByteStream
