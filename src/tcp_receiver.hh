@@ -27,4 +27,7 @@ public:
 
 private:
   Reassembler reassembler_;
+  std::optional<Wrap32> _isn{};  //! The initial sequence number from the sender
+  bool SYN_{ false};
+  bool FIN_{ false};
 };
