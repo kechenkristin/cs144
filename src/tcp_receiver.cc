@@ -30,11 +30,10 @@ void TCPReceiver::receive( TCPSenderMessage message )
 TCPReceiverMessage TCPReceiver::send() const
 {
   // Your code here.
-  if (!_isn.has_value()) return {};
   TCPReceiverMessage ret {};
 
   // get the RST flag The RST (reset) flag. If set, the stream has suffered an error and the connection should be aborted.
-  ret.RST = ( reassembler_.reader().has_error() || reassembler_.writer().has_error() );
+  ret.RST = reassembler_.reader().has_error();
 
   // get the window size
   uint64_t window_size_64 = reassembler_.writer().available_capacity();
