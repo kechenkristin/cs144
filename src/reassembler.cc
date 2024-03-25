@@ -20,9 +20,10 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
     }
   }
 
-  uint64_t data_index { 0 };             // The index of start of valid data, only apply to the passed string param
-  uint64_t actual_index { first_index }; // The actual start index of the string in the axis(initialize as
-                                         // first_index in case 1, 2, 4; equals to _first_unassembled_index in case 3)
+  uint64_t data_index { 0 }; // The index of start of valid data, only apply to the passed string param
+  uint64_t actual_index {
+    first_index }; // The actual start index of the string in the axis(initialize as
+                   // first_index in case 1, 2, 4; equals to _first_unassembled_index in case 3)
 
   // case 3
   if ( first_index < _first_unassembled_index ) {
