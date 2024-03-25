@@ -10,17 +10,18 @@ void TCPReceiver::receive( TCPSenderMessage message )
     return;
   }
 
-  if (!_isn.has_value()) {
-    if (!message.SYN) return;
+  if (message.SYN) {
     _isn = message.seqno;
     SYN_ = true;
   }
+
+  if (!SYN_) return;
 
   if (message.FIN) FIN_ = true;
 
   // seqno -> abs seqno -> stream index
   // checkpoint(64 bit) is the first unassembled byte index
-  uint64_t checkpoint = reassembler_.reader().bytes_buffered();
+  uint64_t checkpoint = reassembler_.first_unassembled_index();
   uint64_t absolute_seqno = message.seqno.unwrap(_isn.value(), checkpoint);
   if (message.SYN) absolute_seqno += 1;
   uint64_t stream_index = absolute_seqno - 1;
@@ -47,7 +48,7 @@ TCPReceiverMessage TCPReceiver::send() const
   if (FIN_ && reassembler_.bytes_pending() == 0) offset += 1;
   if (SYN_) {
     offset += 1;
-    uint64_t stream_index = reassembler_.reader().bytes_buffered();
+    uint64_t stream_index =  reassembler_.first_unassembled_index();
     ret.ackno = Wrap32::wrap(stream_index + offset, _isn.value());
   }
   return ret;

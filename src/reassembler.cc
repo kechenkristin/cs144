@@ -7,7 +7,8 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
 {
   // Your code here.
   // case1
-  if ( first_index >= _capacity + _next_index || _next_index > first_index + data.size() ) {
+  if ( first_index >= _capacity + _first_unassembled_index
+       || _first_unassembled_index > first_index + data.size() ) {
     return;
   }
 
@@ -21,17 +22,17 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
 
   uint64_t data_index { 0 };             // The index of start of valid data, only apply to the passed string param
   uint64_t actual_index { first_index }; // The actual start index of the string in the axis(initialize as
-                                         // first_index in case 1, 2, 4; equals to _next_index in case 3)
+                                         // first_index in case 1, 2, 4; equals to _first_unassembled_index in case 3)
 
   // case 3
-  if ( first_index < _next_index ) {
-    actual_index = _next_index;
-    data_index += _next_index - first_index;
+  if ( first_index < _first_unassembled_index ) {
+    actual_index = _first_unassembled_index;
+    data_index += _first_unassembled_index - first_index;
   }
 
-  uint64_t start_index = _next_index % _capacity;
+  uint64_t start_index = _first_unassembled_index % _capacity;
   uint64_t loop_index = actual_index % _capacity;
-  uint64_t first_unacceptable_index = _next_index + _capacity - reader().bytes_buffered();
+  uint64_t first_unacceptable_index = _first_unassembled_index + _capacity - reader().bytes_buffered();
   if ( first_unacceptable_index <= actual_index ) {
     return;
   }
@@ -69,7 +70,7 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
     for ( uint64_t i = start_index, j = 0; j < written_num; i = next( i ), ++j ) {
       _wait_map.erase( i );
     }
-    _next_index += written_num;
+    _first_unassembled_index += written_num;
   }
 
   if ( _should_eof && bytes_pending() == 0 ) {
