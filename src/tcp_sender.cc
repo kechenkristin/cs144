@@ -6,7 +6,7 @@ using namespace std;
 uint64_t TCPSender::sequence_numbers_in_flight() const
 {
   // Your code here.
-    return _next_seqno - _receiver_ack;
+    return _next_abs_seqno - _receiver_ack;
 }
 
 uint64_t TCPSender::consecutive_retransmissions() const
@@ -19,6 +19,7 @@ void TCPSender::push( const TransmitFunction& transmit )
 {
   // Your code here.
   // special case1: if we already sent the FIN
+  (void) transmit;
     if (end)
       return;
 
@@ -29,7 +30,7 @@ void TCPSender::push( const TransmitFunction& transmit )
     TCPSenderMessage tcpSenderMessage{};
     // read from the input stream to build TCPSendMessage
     // special case3: TCP Connection initializing
-    if (_next_seqno == 0) {
+    if ( _next_abs_seqno == 0) {
       tcpSenderMessage.SYN = true;
     }
 

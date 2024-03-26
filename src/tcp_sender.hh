@@ -51,7 +51,7 @@ private:
 
   // additional variables
   // the absolute seqno for the next byte to be sent
-  uint64_t _next_seqno{0};
+  uint64_t _next_abs_seqno {0};
 
   // the absolute receiver ack
   uint64_t _receiver_ack{0};
