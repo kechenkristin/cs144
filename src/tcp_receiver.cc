@@ -13,6 +13,7 @@ void TCPReceiver::receive( TCPSenderMessage message )
   if ( message.SYN ) {
     _isn = message.seqno;
     _SYN = true;
+    message.seqno = message.seqno + 1;
   }
 
   if ( !_SYN )
@@ -25,11 +26,6 @@ void TCPReceiver::receive( TCPSenderMessage message )
   // checkpoint(64 bit) is the first unassembled byte index
   uint64_t checkpoint = reassembler_.first_unassembled_index();
   uint64_t absolute_seqno = message.seqno.unwrap( _isn.value(), checkpoint );
-
-  // TODO: update this part of logic, don't handle here
-  // write docs for it
-  if ( message.SYN )
-    absolute_seqno += 1;
 
   uint64_t stream_index = absolute_seqno - 1;
 
