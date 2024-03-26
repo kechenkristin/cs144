@@ -26,6 +26,8 @@ void TCPReceiver::receive( TCPSenderMessage message )
   uint64_t checkpoint = reassembler_.first_unassembled_index();
   uint64_t absolute_seqno = message.seqno.unwrap( _isn.value(), checkpoint );
 
+  // TODO: update this part of logic, don't handle here
+  // write docs for it
   if ( message.SYN )
     absolute_seqno += 1;
 

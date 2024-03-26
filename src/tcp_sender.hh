@@ -48,4 +48,21 @@ private:
   ByteStream input_;
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
+
+  // additional variables
+  // the absolute seqno for the next byte to be sent
+  uint64_t _next_seqno{0};
+
+  // the absolute receiver ack
+  uint64_t _receiver_ack{0};
+
+  // the initial window size should be
+  uint64_t _receive_window_size{1};
+
+  // whether the fin is sent
+  bool end{ false};
+
+  // helper methods
+  /* A helper method to tell whether the window is not full. */
+  bool window_not_full(uint64_t window_size) const {return window_size > sequence_numbers_in_flight(); }
 };
