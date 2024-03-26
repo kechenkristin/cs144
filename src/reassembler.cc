@@ -6,6 +6,8 @@ using namespace std;
 void Reassembler::insert( uint64_t first_index, string data, bool is_last_substring )
 {
   // Your code here.
+
+  // STEP1: Check the boundary
   // case1
   if ( first_index >= _capacity + _first_unassembled_index
        || _first_unassembled_index > first_index + data.size() ) {
@@ -38,18 +40,19 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
     return;
   }
 
+  // loop_size is the valid string length, "window"
   uint64_t loop_size = min( data.size() - data_index, first_unacceptable_index - actual_index );
 
+  // STEP2: The real processing logic
+  // first iterate, iterate the data(string) with the window(loop_size)
   for ( uint64_t i = loop_index, j = data_index; j < data_index + loop_size; i = next( i ), j++ ) {
     if ( !_wait_map.contains( i ) ) {
       _wait_map.insert( make_pair( i, data[j] ) );
     }
 
     // j is the last index of the data and if we have eof is true then we should set the flag to be true
-    if ( j + 1 == data.size() ) {
-      if ( is_last_substring ) {
+    if ( j + 1 == data.size()  && is_last_substring) {
         _should_eof = true;
-      }
     }
 
     if ( next( i ) == start_index ) {
