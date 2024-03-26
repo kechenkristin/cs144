@@ -19,8 +19,7 @@ void TCPSender::push( const TransmitFunction& transmit )
 {
   // Your code here.
   // special case1: if we already sent the FIN
-  (void) transmit;
-    if (end)
+    if ( _end )
       return;
 
     // get the window_size
@@ -32,6 +31,17 @@ void TCPSender::push( const TransmitFunction& transmit )
     // special case3: TCP Connection initializing
     if ( _next_abs_seqno == 0) {
       tcpSenderMessage.SYN = true;
+      // TODO: debug here
+      tcpSenderMessage.seqno = isn_ + _next_abs_seqno;
+      _next_abs_seqno += 1;
+    }
+    else {
+      // special case4: FIN set to be false
+      if (input_.writer().is_closed() && window_not_full(window_size)) {
+        tcpSenderMessage.FIN = true;
+        _end = true;
+        _next_abs_seqno++;
+      }
     }
 
 }

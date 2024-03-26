@@ -14,7 +14,7 @@ public:
    * Insert a new substring to be reassembled into a ByteStream.
    *   `first_index`: the index of the first byte of the substring
    *   `data`: the substring itself
-   *   `is_last_substring`: this substring represents the end of the stream
+   *   `is_last_substring`: this substring represents the _end of the stream
    *   `output`: a mutable reference to the Writer
    *
    * The Reassembler's job is to reassemble the indexed substrings (possibly out-of-order

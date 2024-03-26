@@ -60,7 +60,7 @@ private:
   uint64_t _receive_window_size{1};
 
   // whether the fin is sent
-  bool end{ false};
+  bool _end { false};
 
   // helper methods
   /* A helper method to tell whether the window is not full. */
