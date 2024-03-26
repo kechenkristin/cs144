@@ -60,7 +60,9 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
     }
   }
 
+  // second iterate, iterate through the _wait_map to construct the send_str
   string send_str {};
+  // using the next util to smartly captivate consecutive string in wait_map
   for ( uint64_t i = start_index; _wait_map.contains( i ); i = next( i ) ) {
     send_str.push_back( _wait_map[i] );
     if ( next( i ) == start_index ) {
@@ -71,6 +73,7 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
   if ( !send_str.empty() ) {
     output_.writer().push( send_str );
     uint64_t written_num = send_str.size();
+    // third iterate, erase data in wait_map
     for ( uint64_t i = start_index, j = 0; j < written_num; i = next( i ), ++j ) {
       _wait_map.erase( i );
     }
