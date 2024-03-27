@@ -1,6 +1,10 @@
-add_library(minnow_testing_debug STATIC common.cc)
+add_library(minnow_testing_debug STATIC common.cc
+        ../src/retransmission_timer.hh
+        ../src/retransmission_timer.cc
+)
 
-add_library(minnow_testing_sanitized EXCLUDE_FROM_ALL STATIC common.cc)
+add_library(minnow_testing_sanitized EXCLUDE_FROM_ALL STATIC common.cc
+)
 target_compile_options(minnow_testing_sanitized PUBLIC ${SANITIZING_FLAGS})
 
 add_custom_target(functionality_testing)

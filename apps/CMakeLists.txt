@@ -1,4 +1,7 @@
-add_library (stream_copy STATIC bidirectional_stream_copy.cc)
+add_library (stream_copy STATIC bidirectional_stream_copy.cc
+        ../src/retransmission_timer.hh
+        ../src/retransmission_timer.cc
+)
 
 macro(add_app exec_name)
   add_executable("${exec_name}" "${exec_name}.cc")
