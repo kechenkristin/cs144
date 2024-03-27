@@ -1,6 +1,7 @@
 #pragma once
 
 #include "byte_stream.hh"
+#include "retransmission_timer.hh"
 #include "tcp_receiver_message.hh"
 #include "tcp_sender_message.hh"
 
@@ -45,22 +46,33 @@ public:
 
 private:
   // Variables initialized in constructor
-  ByteStream input_;
+  ByteStream input_;  //! outgoing stream of bytes that have not yet been sent
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
 
   // additional variables
+  // Keep track of which segments have been sent but not yet acknowledged by the receiver—
+  // we call these “outstanding” segments
+  std::deque<TCPSenderMessage> _outstanding_msgs{};
+
   // the absolute seqno for the next byte to be sent
   uint64_t _next_abs_seqno {0};
 
   // the absolute receiver ack
-  uint64_t _receiver_ack{0};
+  uint64_t _receive_ack {0};
 
   // the initial window size should be
   uint64_t _receive_window_size{1};
 
+  //! the consecutive retransmissions
+  uint64_t _consecutive_retransmissions{0};
+
   // whether the fin is sent
   bool _end { false};
+
+  // the retransmission timer
+  RetransmissionTimer _retransmission_timer{initial_RTO_ms_};
+
 
   // helper methods
   /* A helper method to tell whether the window is not full. */
