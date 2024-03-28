@@ -34,6 +34,10 @@ public:
   /* Time has passed by the given # of milliseconds since the last time the tick() method was called */
   void tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit );
 
+  // denghaowen
+  Reader& reader() { return input_.reader(); }
+  const Reader& reader() const { return input_.reader(); }
+
   // Accessors
   uint64_t sequence_numbers_in_flight() const;  // How many sequence numbers are outstanding?
   uint64_t consecutive_retransmissions() const; // How many consecutive *re*transmissions have happened?
@@ -41,11 +45,26 @@ public:
   const Writer& writer() const { return input_.writer(); }
 
   // Access input stream reader, but const-only (can't read from outside)
-  const Reader& reader() const { return input_.reader(); }
+  // const Reader& reader() const { return input_.reader(); }
+  // Reader& reader() { return input_.reader(); }
 
 private:
   // Variables initialized in constructor
   ByteStream input_;
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
+  // denghaowen
+  //  TCPSenderMessage msg_send_ {};
+  std::queue<TCPSenderMessage> outstanding_queue_ {};
+  uint64_t outgoing_bytes_ {};
+
+  uint16_t wnd_size_ { 1 }; // 初始假定窗口大小为 1
+  uint64_t next_seqno_ {};  // 待发送的下一个字节序号
+  uint64_t ack_seqno_ {};   // 已确认的字节序号
+  bool set_syn_ {}, fin_ {}, set_fin_ {};
+
+  uint64_t RTO_ { initial_RTO_ms_ };
+  uint64_t retransmission_cnt_ { 0 };
+  uint64_t time_passed_ { 0 };
+  bool window_not_full( uint64_t wnd_size );
 };
