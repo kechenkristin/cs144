@@ -7,7 +7,7 @@ uint64_t TCPSender::sequence_numbers_in_flight() const
 {
   // Your code here.
   // TODO: fix bug here
-    return _next_abs_seqno - _receive_ack;
+  return _next_abs_seqno - _receive_ack;
 }
 
 uint64_t TCPSender::consecutive_retransmissions() const
@@ -26,7 +26,7 @@ void TCPSender::push( const TransmitFunction& transmit )
 
   const size_t window_size = _receive_window_size == 0 ? 1 : _receive_window_size;
   // 不断组装并发送分组数据报，直到达到窗口上限或没数据读，并且在 FIN 发出后不再尝试组装报文
-  for ( string payload {}; window_not_full(window_size) && !_sent_fin; payload.clear() ) {
+  for ( string payload {}; window_not_full( window_size ) && !_sent_fin; payload.clear() ) {
     string_view bytes_view = bytes_reader.peek();
     // 流为空且不需要发出 FIN，并且已经发出了连接请求，则跳过报文发送
     if ( _sent_syn && bytes_view.empty() && !_fin_flag )
@@ -52,8 +52,9 @@ void TCPSender::push( const TransmitFunction& transmit )
       _fin_flag |= bytes_reader.is_finished();
       bytes_view = bytes_reader.peek();
     }
-    TCPSenderMessage msg =  make_message( _next_abs_seqno, move( payload ), _sent_syn ? _syn_flag : true, _fin_flag );
-    _outstanding_msgs.push_back(msg);
+    TCPSenderMessage msg
+      = make_message( _next_abs_seqno, move( payload ), _sent_syn ? _syn_flag : true, _fin_flag );
+    _outstanding_msgs.push_back( msg );
 
     // 因为 FIN 会在下一个 if-else 中动态改变，所以先计算报文长度调整余量
     const size_t margin = _sent_syn ? _syn_flag : 0;
@@ -68,7 +69,7 @@ void TCPSender::push( const TransmitFunction& transmit )
     const size_t correct_length = msg.sequence_length() - margin;
 
     _next_abs_seqno += correct_length;
-    _num_bytes_in_flight += correct_length;
+    // _num_bytes_in_flight += correct_length;
     _sent_syn = _sent_syn ? _sent_syn : true;
     transmit( msg );
     if ( correct_length != 0 )
@@ -79,66 +80,107 @@ void TCPSender::push( const TransmitFunction& transmit )
 TCPSenderMessage TCPSender::make_empty_message() const
 {
   // Your code here.
-    return make_message(_next_abs_seqno, {}, false, false);
+  return make_message( _next_abs_seqno, {}, false, false );
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-    _receive_window_size = msg.window_size;
-    if (!msg.ackno.has_value() && msg.window_size == 0) {
-      _input.set_error();
-      return;
-    }
+  _receive_window_size = msg.window_size;
+  if ( !msg.ackno.has_value() && msg.window_size == 0 ) {
+    _input.set_error();
+    return;
+  }
 
-    // STEP1: check the boundary for ackno
-    uint64_t expecting_seqno = msg.ackno->unwrap( _isn, _next_abs_seqno);
-    // (received_ackno, next_seqno)
-    if ( expecting_seqno > _next_abs_seqno)
-      return;
+  uint64_t receiver_need_next_seqno = msg.ackno->unwrap( _isn, _next_abs_seqno );
+  // (received_ackno, next_seqno)
+  if ( receiver_need_next_seqno > _next_abs_seqno || receiver_need_next_seqno < _receive_ack )
+    return;
 
-    bool is_ack_update = false;
+  bool is_ack_update = false;
 
-    while ( !_outstanding_msgs.empty() ) {
-      TCPSenderMessage buffered_msg = _outstanding_msgs.front();
-      uint64_t final_seqno = _receive_ack + buffered_msg.sequence_length() - buffered_msg.SYN;
-      if (expecting_seqno <= _receive_ack || expecting_seqno < final_seqno)
-      break;
-
+  for ( auto buffered_msg = _outstanding_msgs.begin(); buffered_msg != _outstanding_msgs.end(); ) {
+    uint64_t buffered_msg_start_pos = buffered_msg->seqno.unwrap( _isn, _next_abs_seqno );
+    uint64_t offset =  buffered_msg_start_pos + buffered_msg->length_in_sequence_space();
+    if ( receiver_need_next_seqno >=  offset) {
+      _receive_ack = offset;
+      buffered_msg = _outstanding_msgs.erase( buffered_msg );
       is_ack_update = true;
-      uint64_t offset = buffered_msg.sequence_length() - _syn_flag;
-      _num_bytes_in_flight -= offset;
-      _receive_ack += offset;
-      _syn_flag = _sent_syn ? _syn_flag : expecting_seqno <= _next_abs_seqno;
-      _outstanding_msgs.pop_front();
+    } else {
+      buffered_msg++;
     }
+  }
 
+  if ( is_ack_update ) {
+    _retransmission_timer.reset_timer();
+    _consecutive_retransmissions = 0;
+  }
 
-        if (is_ack_update) {
-          _consecutive_retransmissions = 0;
-          if (_outstanding_msgs.empty()) _retransmission_timer.stop_timer();
-          else
-            _retransmission_timer.reset_timer();
-        }
+//  while ( !_outstanding_msgs.empty() ) {
+//    TCPSenderMessage buffered_msg = _outstanding_msgs.front();
+//
+//    uint64_t final_seqno = _receive_ack + buffered_msg.sequence_length();
+//    if ( receiver_need_next_seqno < final_seqno)
+//      break;
+//
+//    is_ack_update = true;
+//    uint64_t offset = buffered_msg.length_in_sequence_space();
+//    _num_bytes_in_flight -= offset;
+//    _receive_ack += offset;
+//    _syn_flag = _sent_syn ? _syn_flag : receiver_need_next_seqno <= _next_abs_seqno;
+//    _outstanding_msgs.pop_front();
+//  }
+//
+//
+//  if (is_ack_update) {
+//    _consecutive_retransmissions = 0;
+//    if (_outstanding_msgs.empty()) _retransmission_timer.stop_timer();
+//    else
+//      _retransmission_timer.reset_timer();
+//  }
+
+//      while ( !_outstanding_msgs.empty() ) {
+//        TCPSenderMessage buffered_msg = _outstanding_msgs.front();
+//        uint64_t buffered_msg_length = buffered_msg.length_in_sequence_space();
+//
+//         uint64_t final_seqno = _receive_ack + buffered_msg_length;
+//         if ( receiver_need_next_seqno < final_seqno)
+//        break;
+//
+//        is_ack_update = true;
+//        uint64_t offset = buffered_msg.length_in_sequence_space() - _syn_flag;
+//        _num_bytes_in_flight -= offset;
+//        _receive_ack += offset;
+//        _syn_flag = _sent_syn ? _syn_flag : receiver_need_next_seqno <= _next_abs_seqno;
+//        _outstanding_msgs.pop_front();
+//      }
+//
+//
+//          if (is_ack_update) {
+//            _consecutive_retransmissions = 0;
+//            if (_outstanding_msgs.empty()) _retransmission_timer.stop_timer();
+//            else
+//              _retransmission_timer.reset_timer();
+//          }
 }
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
 {
   // Your code here.
-    _consecutive_retransmissions++;
-    if (_retransmission_timer.timer_expired(ms_since_last_tick)) {
-      transmit(_outstanding_msgs.front());
-      if (_receive_window_size == 0)
-        _retransmission_timer.reset_timer();
-      else
-        _retransmission_timer.handle_expired();
-    }
+  _consecutive_retransmissions++;
+  if ( _retransmission_timer.timer_expired( ms_since_last_tick ) ) {
+    transmit( _outstanding_msgs.front() );
+    if ( _receive_window_size == 0 )
+      _retransmission_timer.reset_timer();
+    else
+      _retransmission_timer.handle_expired();
+  }
 }
 
 TCPSenderMessage TCPSender::make_message( uint64_t seqno, string payload, bool SYN, bool FIN ) const
 {
-    return { .seqno = Wrap32::wrap( seqno, _isn ),
-             .SYN = SYN,
-             .payload = move( payload ),
-             .FIN = FIN,
-             .RST = _input.reader().has_error() };
+  return { .seqno = Wrap32::wrap( seqno, _isn ),
+           .SYN = SYN,
+           .payload = move( payload ),
+           .FIN = FIN,
+           .RST = _input.reader().has_error() };
 }

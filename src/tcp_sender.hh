@@ -46,44 +46,43 @@ public:
 
 private:
   // Variables initialized in constructor
-  ByteStream _input;  //! outgoing stream of bytes that have not yet been sent
+  ByteStream _input; //! outgoing stream of bytes that have not yet been sent
   Wrap32 _isn;
   uint64_t initial_RTO_ms_;
 
   // additional variables
   // Keep track of which segments have been sent but not yet acknowledged by the receiver—
   // we call these “outstanding” segments
-  std::deque<TCPSenderMessage> _outstanding_msgs{};
+  std::deque<TCPSenderMessage> _outstanding_msgs {};
 
   // the absolute seqno for the next byte to be sent
-  uint64_t _next_abs_seqno {0};
+  uint64_t _next_abs_seqno { 0 };
 
   // the absolute receiver ack
-  uint64_t _receive_ack {0};
+  uint64_t _receive_ack { 0 };
 
   // the initial window size should be
-  uint64_t _receive_window_size{1};
+  uint64_t _receive_window_size { 1 };
 
   //! the consecutive retransmissions
-  uint64_t _consecutive_retransmissions{0};
+  uint64_t _consecutive_retransmissions { 0 };
 
   // whether the fin is sent
-  bool _fin_flag{ false};
+  bool _fin_flag { false };
 
-  bool _syn_flag{ false};
+  bool _syn_flag { false };
 
-  bool _sent_syn{ false};
+  bool _sent_syn { false };
 
-  bool _sent_fin{ false};
+  bool _sent_fin { false };
 
-  uint64_t _num_bytes_in_flight{0};
+  uint64_t _num_bytes_in_flight { 0 };
 
   // the retransmission timer
-  RetransmissionTimer _retransmission_timer{initial_RTO_ms_};
-
+  RetransmissionTimer _retransmission_timer { initial_RTO_ms_ };
 
   // helper methods
   /* A helper method to tell whether the window is not full. */
-  bool window_not_full(uint64_t window_size) const {return window_size > sequence_numbers_in_flight(); }
+  bool window_not_full( uint64_t window_size ) const { return window_size > sequence_numbers_in_flight(); }
   TCPSenderMessage make_message( uint64_t seqno, std::string payload, bool SYN, bool FIN ) const;
 };
