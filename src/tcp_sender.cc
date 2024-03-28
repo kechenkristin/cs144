@@ -23,37 +23,43 @@ void TCPSender::push( const TransmitFunction& transmit )
     if ( _end )
       return;
 
+    Reader& bytes_reader = _input.reader();
+
     // get the window_size
     // special case2: if the _received_window set to be 0
     int64_t window_size = _receive_window_size == 0 ? 1 : _receive_window_size;
 
-    TCPSenderMessage tcpSenderMessage{};
+    TCPSenderMessage tcpSenderMessage;
     // read from the input stream to build TCPSendMessage
     // special case3: TCP Connection initializing
     if ( _next_abs_seqno == 0) {
       tcpSenderMessage.SYN = true;
       // TODO: debug here
-      tcpSenderMessage.seqno = isn_ + _next_abs_seqno;
+      tcpSenderMessage.seqno = _isn + _next_abs_seqno;
+     //  tcpSenderMessage = make_message(_isn + _next_abs_seqno, {}, true, false);
       _next_abs_seqno += 1;
     }
     else {
       // calcalate the string length
-      uint64_t length = min(min(window_size - sequence_numbers_in_flight(), input_.reader().bytes_buffered()), TCPConfig::MAX_PAYLOAD_SIZE);
+      uint64_t length = min(min(window_size - sequence_numbers_in_flight(), _input.reader().bytes_buffered()), TCPConfig::MAX_PAYLOAD_SIZE);
 
       // construct the payload_str
       string payload_str{};
 
       for (uint64_t i = 0; i < length; i++) {
-        payload_str.append(input_.reader().peek());
+        payload_str.append( bytes_reader.peek());
+        bytes_reader.pop(1);
       }
 
       tcpSenderMessage.payload = payload_str;
 
-      tcpSenderMessage.seqno = isn_ + _next_abs_seqno;
+      tcpSenderMessage.seqno = _isn + _next_abs_seqno;
       _next_abs_seqno += length;
 
       // special case4: FIN set to be false
-      if (input_.writer().is_closed() && window_not_full(window_size)) {
+      // TODO: fix the bug here
+      // ( _input.writer().is_closed() && window_not_full(window_size))
+      if ( bytes_reader.is_finished() && window_not_full(window_size)) {
         tcpSenderMessage.FIN = true;
         _end = true;
         _next_abs_seqno++;
@@ -70,23 +76,21 @@ void TCPSender::push( const TransmitFunction& transmit )
     // start the timer
     _retransmission_timer.start_timer();
 
-    //  // if we have engough window size, we can send out the segment again
-    if ( window_not_full(window_size))
+    // as long as there are new bytes to be read and space available in the window
+    if ( window_not_full(window_size) && !bytes_reader.peek().empty())
       push(transmit);
 }
 
 TCPSenderMessage TCPSender::make_empty_message() const
 {
   // Your code here.
-    TCPSenderMessage tcpSenderMessage{};
-    tcpSenderMessage.seqno = isn_ + _next_abs_seqno;
-    return tcpSenderMessage;
+    return make_message(_next_abs_seqno, {}, false, false);
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
     // STEP1: check the boundary for ackno
-    uint64_t abs_ackno = msg.ackno->unwrap(isn_, _next_abs_seqno);
+    uint64_t abs_ackno = msg.ackno->unwrap( _isn, _next_abs_seqno);
     // (received_ackno, next_seqno)
     if (abs_ackno < _receive_ack || abs_ackno > _next_abs_seqno)
       return;
@@ -96,7 +100,7 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
 
     // STEP2: erase TCPSenderMessage in outstanding
     for (auto current_sender_msg = _outstanding_msgs.begin(); current_sender_msg != _outstanding_msgs.end();) {
-      uint64_t abs_seqno = current_sender_msg->seqno.unwrap(isn_, _next_abs_seqno);
+      uint64_t abs_seqno = current_sender_msg->seqno.unwrap( _isn, _next_abs_seqno);
 
       uint64_t ackno_offset = abs_seqno + current_sender_msg->sequence_length();
       if (abs_ackno >= ackno_offset) {
@@ -132,4 +136,13 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
       else
         _retransmission_timer.handle_expired();
     }
+}
+
+TCPSenderMessage TCPSender::make_message( uint64_t seqno, string payload, bool SYN, bool FIN ) const
+{
+    return { .seqno = Wrap32::wrap( seqno, _isn ),
+             .SYN = SYN,
+             .payload = move( payload ),
+             .FIN = FIN,
+             .RST = _input.reader().has_error() };
 }
