@@ -1,6 +1,8 @@
-add_library(minnow_testing_debug STATIC common.cc)
+add_library(minnow_testing_debug STATIC common.cc
+)
 
-add_library(minnow_testing_sanitized EXCLUDE_FROM_ALL STATIC common.cc)
+add_library(minnow_testing_sanitized EXCLUDE_FROM_ALL STATIC common.cc
+)
 target_compile_options(minnow_testing_sanitized PUBLIC ${SANITIZING_FLAGS})
 
 add_custom_target(functionality_testing)
@@ -58,6 +60,14 @@ add_test_exec(recv_reorder)
 add_test_exec(recv_reorder_more)
 add_test_exec(recv_close)
 add_test_exec(recv_special)
+
+add_test_exec(send_connect)
+add_test_exec(send_transmit)
+add_test_exec(send_retx)
+add_test_exec(send_window)
+add_test_exec(send_ack)
+add_test_exec(send_close)
+add_test_exec(send_extra)
 
 add_speed_test(byte_stream_speed_test)
 add_speed_test(reassembler_speed_test)
