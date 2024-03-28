@@ -1,129 +1,116 @@
 #include "tcp_sender.hh"
 #include "tcp_config.hh"
+#include "wrapping_integers.hh"
+
+#include <string_view>
+#include <utility>
 
 using namespace std;
 
 uint64_t TCPSender::sequence_numbers_in_flight() const
 {
-  // Your code here.
-  return outgoing_bytes_;
+  return total_outstanding_;
 }
 
 uint64_t TCPSender::consecutive_retransmissions() const
 {
-  // Your code here.
-  return retransmission_cnt_;
+  return total_retransmission_;
 }
 
 void TCPSender::push( const TransmitFunction& transmit )
 {
-  // Your code here.
-  TCPSenderMessage msg_send_;
-  Reader& BytesReader = input_.reader();
-  msg_send_.seqno = Wrap32::wrap( next_seqno_, isn_ );
-  uint16_t wnd_size = wnd_size_ > 0 ? wnd_size_ : 1;
-  fin_ |= BytesReader.is_finished();
-
-  while ( window_not_full(wnd_size) ) {
-    if ( !set_syn_ ) {
-      msg_send_.SYN = true;
-      set_syn_ = true;
-      outgoing_bytes_ += 1;
-      next_seqno_ += 1;
+  while ( ( window_size_ == 0 ? 1 : window_size_ ) > total_outstanding_ ) {
+    if ( FIN_sent_ ) {
+      break; // Is finished.
     }
 
-    while ( BytesReader.bytes_buffered() && window_not_full(wnd_size)
-            && msg_send_.sequence_length() < TCPConfig::MAX_PAYLOAD_SIZE ) {
-      string_view bytes_view = BytesReader.peek();
-      uint16_t send_size = min( TCPConfig::MAX_PAYLOAD_SIZE, wnd_size - outgoing_bytes_ );
-      if ( bytes_view.size() > send_size ) {
-        bytes_view.remove_suffix( bytes_view.size() - send_size - msg_send_.SYN );
-      }
-
-      msg_send_.payload.append( bytes_view );
-      uint64_t offset = bytes_view.size() + msg_send_.SYN;
-      outgoing_bytes_ += offset;
-      next_seqno_ += offset;
-      BytesReader.pop( bytes_view.size() );
-      fin_ |= BytesReader.is_finished();
+    auto msg { make_empty_message() };
+    if ( not SYN_sent_ ) {
+      msg.SYN = true;
+      SYN_sent_ = true;
     }
 
-    if ( !set_fin_ && fin_ && window_not_full(wnd_size) ) {
-      set_fin_ = msg_send_.FIN = true;
-      outgoing_bytes_ += 1;
-      next_seqno_ += 1;
+    const uint64_t remaining { ( window_size_ == 0 ? 1 : window_size_ ) - total_outstanding_ };
+    const size_t len { min( TCPConfig::MAX_PAYLOAD_SIZE, remaining - msg.sequence_length() ) };
+    auto&& payload { msg.payload };
+    while ( reader().bytes_buffered() != 0U and payload.size() < len ) {
+      string_view view { reader().peek() };
+      view = view.substr( 0, len - payload.size() );
+      payload += view;
+      input_.reader().pop( view.size() );
     }
 
-    if ( msg_send_.sequence_length() ) {
-      msg_send_.RST = input_.has_error();
-      outstanding_queue_.emplace( msg_send_ );
-      transmit( msg_send_ );
+    if ( not FIN_sent_ and remaining > msg.sequence_length() and reader().is_finished() ) {
+      msg.FIN = true;
+      FIN_sent_ = true;
     }
 
-    if ( msg_send_.sequence_length() == TCPConfig::MAX_PAYLOAD_SIZE ) {
-      msg_send_.payload = {};
-      msg_send_.seqno
-        = Wrap32::wrap( msg_send_.seqno.unwrap( isn_, next_seqno_ ) + TCPConfig::MAX_PAYLOAD_SIZE, isn_ );
-    } else {
-      return;
+    if ( msg.sequence_length() == 0 ) {
+      break;
     }
+
+    transmit( msg );
+    if ( not timer_.is_active() ) {
+      timer_.start();
+    }
+    next_abs_seqno_ += msg.sequence_length();
+    total_outstanding_ += msg.sequence_length();
+    outstanding_message_.emplace( move( msg ) );
   }
 }
 
 TCPSenderMessage TCPSender::make_empty_message() const
 {
-  // Your code here.
-  return TCPSenderMessage { Wrap32::wrap( next_seqno_, isn_ ), false, {}, false, input_.reader().has_error() };
+  return { Wrap32::wrap( next_abs_seqno_, isn_ ), false, {}, false, input_.has_error() };
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-  // Your code here.
-  wnd_size_ = msg.window_size;
-  const uint64_t abs_seqno = ( msg.ackno )->unwrap( isn_, next_seqno_ );
-
-  if ( !msg.ackno.has_value() ) {
-    if ( msg.window_size == 0 )
-      input_.set_error();
+  if ( input_.has_error() ) {
     return;
   }
-  if ( abs_seqno > next_seqno_ )
+  if ( msg.RST ) {
+    input_.set_error();
     return;
+  }
 
-  while ( !outstanding_queue_.empty() ) {
-    auto& msg_seg = outstanding_queue_.front();
-    if ( ack_seqno_ + msg_seg.sequence_length() <= abs_seqno ) {
-      outgoing_bytes_ -= msg_seg.sequence_length();
-      ack_seqno_ += msg_seg.sequence_length();
-      outstanding_queue_.pop();
-
-      RTO_ = initial_RTO_ms_;
-      time_passed_ = 0;
-      retransmission_cnt_ = 0;
-    } else {
-      break;
+  window_size_ = msg.window_size;
+  if ( not msg.ackno.has_value() ) {
+    return;
+  }
+  const uint64_t recv_ack_abs_seqno { msg.ackno->unwrap( isn_, next_abs_seqno_ ) };
+  if ( recv_ack_abs_seqno > next_abs_seqno_ ) {
+    return;
+  }
+  bool has_acknowledgment { false };
+  while ( not outstanding_message_.empty() ) {
+    const auto& message { outstanding_message_.front() };
+    if ( ack_abs_seqno_ + message.sequence_length() > recv_ack_abs_seqno ) {
+      break; // Must be fully acknowledged by the TCP receiver.
     }
+    has_acknowledgment = true;
+    ack_abs_seqno_ += message.sequence_length();
+    total_outstanding_ -= message.sequence_length();
+    outstanding_message_.pop();
+  }
+  if ( has_acknowledgment ) {
+    total_retransmission_ = 0;
+    timer_.reload( initial_RTO_ms_ );
+    outstanding_message_.empty() ? timer_.stop() : timer_.start();
   }
 }
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
 {
-  // Your code here.
-  time_passed_ += ms_since_last_tick;
-
-  if ( !outstanding_queue_.empty() && time_passed_ >= RTO_ ) {
-    auto iter = outstanding_queue_.front();
-
-    if ( wnd_size_ > 0 ) {
-      RTO_ <<= 1;
+  if ( timer_.tick( ms_since_last_tick ).is_expired() ) {
+    if ( outstanding_message_.empty() ) {
+      return;
     }
-    transmit( iter );
-    time_passed_ = 0;
-    ++retransmission_cnt_;
+    transmit( outstanding_message_.front() );
+    if ( window_size_ != 0 ) {
+      total_retransmission_ += 1;
+      timer_.exponential_backoff();
+    }
+    timer_.reset();
   }
-}
-
-// utils funtions
-bool TCPSender::window_not_full(uint64_t wnd_size) {
-  return wnd_size > outgoing_bytes_;
 }
