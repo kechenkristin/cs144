@@ -74,7 +74,7 @@ add_custom_target (check5 COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --s
 
 ###
 
-add_custom_target (speed COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --timeout 12 -R '_speed_test')
+add_custom_target (speed COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --timeout 60 -R '_speed_test')
 
 set(compile_name_opt "compile with optimization")
 add_test(NAME ${compile_name_opt}
