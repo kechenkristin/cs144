@@ -17,7 +17,7 @@ class TCPSender
 public:
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( ByteStream&& input, Wrap32 isn, uint64_t initial_RTO_ms )
-    : _input( std::move( input ) ), _isn( isn ), initial_RTO_ms_( initial_RTO_ms )
+    : input_( std::move( input ) ), isn_( isn ), initial_RTO_ms_( initial_RTO_ms )
   {}
 
   /* Generate an empty TCPSenderMessage */
@@ -38,16 +38,16 @@ public:
   // Accessors
   uint64_t sequence_numbers_in_flight() const;  // How many sequence numbers are outstanding?
   uint64_t consecutive_retransmissions() const; // How many consecutive *re*transmissions have happened?
-  Writer& writer() { return _input.writer(); }
-  const Writer& writer() const { return _input.writer(); }
+  Writer& writer() { return input_.writer(); }
+  const Writer& writer() const { return input_.writer(); }
 
   // Access input stream reader, but const-only (can't read from outside)
-  const Reader& reader() const { return _input.reader(); }
+  const Reader& reader() const { return input_.reader(); }
 
 private:
   // Variables initialized in constructor
-  ByteStream _input;  //! outgoing stream of bytes that have not yet been sent
-  Wrap32 _isn;
+  ByteStream input_;  //! outgoing stream of bytes that have not yet been sent
+  Wrap32 isn_;
   uint64_t initial_RTO_ms_;
 
   // additional variables
@@ -77,5 +77,4 @@ private:
   // helper methods
   /* A helper method to tell whether the window is not full. */
   bool window_not_full(uint64_t window_size) const {return window_size > sequence_numbers_in_flight(); }
-  TCPSenderMessage make_message( uint64_t seqno, std::string payload, bool SYN, bool FIN ) const;
 };
