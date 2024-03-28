@@ -24,7 +24,7 @@ void TCPSender::push( const TransmitFunction& transmit )
   uint16_t wnd_size = wnd_size_ > 0 ? wnd_size_ : 1;
   fin_ |= BytesReader.is_finished();
 
-  while ( wnd_size > outgoing_bytes_ ) {
+  while ( window_not_full(wnd_size) ) {
     if ( !set_syn_ ) {
       msg_send_.SYN = true;
       set_syn_ = true;
@@ -32,7 +32,7 @@ void TCPSender::push( const TransmitFunction& transmit )
       next_seqno_ += 1;
     }
 
-    while ( BytesReader.bytes_buffered() && wnd_size > outgoing_bytes_
+    while ( BytesReader.bytes_buffered() && window_not_full(wnd_size)
             && msg_send_.sequence_length() < TCPConfig::MAX_PAYLOAD_SIZE ) {
       string_view bytes_view = BytesReader.peek();
       uint16_t send_size = min( TCPConfig::MAX_PAYLOAD_SIZE, wnd_size - outgoing_bytes_ );
@@ -41,13 +41,14 @@ void TCPSender::push( const TransmitFunction& transmit )
       }
 
       msg_send_.payload.append( bytes_view );
-      outgoing_bytes_ += bytes_view.size() + msg_send_.SYN;
-      next_seqno_ += bytes_view.size() + msg_send_.SYN;
+      uint64_t offset = bytes_view.size() + msg_send_.SYN;
+      outgoing_bytes_ += offset;
+      next_seqno_ += offset;
       BytesReader.pop( bytes_view.size() );
       fin_ |= BytesReader.is_finished();
     }
 
-    if ( !set_fin_ && fin_ && wnd_size > outgoing_bytes_ ) {
+    if ( !set_fin_ && fin_ && window_not_full(wnd_size) ) {
       set_fin_ = msg_send_.FIN = true;
       outgoing_bytes_ += 1;
       next_seqno_ += 1;
@@ -57,10 +58,6 @@ void TCPSender::push( const TransmitFunction& transmit )
       msg_send_.RST = input_.has_error();
       outstanding_queue_.emplace( msg_send_ );
       transmit( msg_send_ );
-    }
-
-    if ( msg_send_.sequence_length() != 0 ) {
-      timer_ = true;
     }
 
     if ( msg_send_.sequence_length() == TCPConfig::MAX_PAYLOAD_SIZE ) {
@@ -76,8 +73,7 @@ void TCPSender::push( const TransmitFunction& transmit )
 TCPSenderMessage TCPSender::make_empty_message() const
 {
   // Your code here.
-  TCPSenderMessage msg { Wrap32::wrap( next_seqno_, isn_ ), false, {}, false, input_.reader().has_error() };
-  return msg;
+  return TCPSenderMessage { Wrap32::wrap( next_seqno_, isn_ ), false, {}, false, input_.reader().has_error() };
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
@@ -125,4 +121,9 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
     time_passed_ = 0;
     ++retransmission_cnt_;
   }
+}
+
+// utils funtions
+bool TCPSender::window_not_full(uint64_t wnd_size) {
+  return wnd_size > outgoing_bytes_;
 }

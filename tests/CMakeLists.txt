@@ -1,6 +1,4 @@
 add_library(minnow_testing_debug STATIC common.cc
-        ../src/retransmission_timer.hh
-        ../src/retransmission_timer.cc
 )
 
 add_library(minnow_testing_sanitized EXCLUDE_FROM_ALL STATIC common.cc

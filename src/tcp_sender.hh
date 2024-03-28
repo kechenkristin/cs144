@@ -66,5 +66,5 @@ private:
   uint64_t RTO_ { initial_RTO_ms_ };
   uint64_t retransmission_cnt_ { 0 };
   uint64_t time_passed_ { 0 };
-  bool timer_ {};
+  bool window_not_full( uint64_t wnd_size );
 };
