@@ -68,11 +68,15 @@ private:
   uint64_t _consecutive_retransmissions{0};
 
   // whether the fin is sent
-  bool _end { false};
-
   bool _fin_flag{ false};
 
   bool _syn_flag{ false};
+
+  bool _sent_syn{ false};
+
+  bool _sent_fin{ false};
+
+  uint64_t _num_bytes_in_flight{0};
 
   // the retransmission timer
   RetransmissionTimer _retransmission_timer{initial_RTO_ms_};
