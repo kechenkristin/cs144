@@ -1,6 +1,8 @@
 #pragma once
 
 #include "byte_stream.hh"
+#include <map>
+#include <unordered_map>
 
 class Reassembler
 {
@@ -12,7 +14,7 @@ public:
    * Insert a new substring to be reassembled into a ByteStream.
    *   `first_index`: the index of the first byte of the substring
    *   `data`: the substring itself
-   *   `is_last_substring`: this substring represents the end of the stream
+   *   `is_last_substring`: this substring represents the _end of the stream
    *   `output`: a mutable reference to the Writer
    *
    * The Reassembler's job is to reassemble the indexed substrings (possibly out-of-order
@@ -39,7 +41,15 @@ public:
 
   // Access output stream writer, but const-only (can't write from outside)
   const Writer& writer() const { return output_.writer(); }
+  uint64_t first_unassembled_index() const { return _first_unassembled_index; }
 
 private:
   ByteStream output_; // the Reassembler writes to this ByteStream
+
+  // additional attributes
+  uint64_t _capacity { output_.writer().available_capacity() };
+  uint64_t _first_unassembled_index { 0 }; // The index of the next byte expected in the stream
+  std::map<size_t, char> _wait_map {};     // byte streams to be assembled.
+  uint64_t next( uint64_t ptr ) { return ( ptr + 1 ) % _capacity; }
+  bool _should_eof { false };
 };

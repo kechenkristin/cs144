@@ -77,7 +77,7 @@ int main()
       const Wrap32 isn( rd() );
       cfg.isn = isn;
 
-      TCPSenderTestHarness test { "Many short writes, ack at end", cfg };
+      TCPSenderTestHarness test { "Many short writes, ack at _end", cfg };
       test.execute( Push {} );
       test.execute( ExpectMessage {}.with_no_flags().with_syn( true ).with_payload_size( 0 ).with_seqno( isn ) );
       test.execute( ExpectSeqno { isn + 1 } );

@@ -2,11 +2,8 @@
 #include "test_should_be.hh"
 #include "wrapping_integers.hh"
 
-#include <cstdint>
 #include <exception>
 #include <iostream>
-#include <optional>
-#include <stdexcept>
 #include <string>
 
 using namespace std;

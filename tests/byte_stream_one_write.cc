@@ -10,7 +10,7 @@ int main()
 {
   try {
     {
-      ByteStreamTestHarness test { "write-end-pop", 15 };
+      ByteStreamTestHarness test { "write-_end-pop", 15 };
 
       test.execute( Push { "cat" } );
 
@@ -46,7 +46,7 @@ int main()
     }
 
     {
-      ByteStreamTestHarness test { "write-pop-end", 15 };
+      ByteStreamTestHarness test { "write-pop-_end", 15 };
 
       test.execute( Push { "cat" } );
 
@@ -82,7 +82,7 @@ int main()
     }
 
     {
-      ByteStreamTestHarness test { "write-pop2-end", 15 };
+      ByteStreamTestHarness test { "write-pop2-_end", 15 };
 
       test.execute( Push { "cat" } );
 

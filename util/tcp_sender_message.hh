@@ -34,4 +34,8 @@ struct TCPSenderMessage
 
   // How many sequence numbers does this segment use?
   size_t sequence_length() const { return SYN + payload.size() + FIN; }
+
+  //! \brief Segment's length in sequence space
+  //! \note Equal to payload length plus one byte if SYN is set, plus one byte if FIN is set
+  size_t length_in_sequence_space() const { return payload.size() + ( SYN ? 1 : 0 ) + ( FIN ? 1 : 0 ); }
 };
