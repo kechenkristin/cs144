@@ -106,20 +106,23 @@ void NetworkInterface::recv_frame( const EthernetFrame& frame )
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
   // Update and check ARP mapping timers
-  for ( auto& it : _ARP_mapping ) {
-    auto timer = it.second.second;
-    timer.timer_tick( ms_since_last_tick );
+  for ( auto it = _ARP_mapping.begin(); it != _ARP_mapping.end(); ) {
+    it->second.second.timer_tick( ms_since_last_tick );
+    auto timer = it->second.second;
     if ( timer.timer_expired( ARP_ENTRY_TTL_ms ) ) {
-      _ARP_mapping.erase( it.first );
+      it = _ARP_mapping.erase( it );
+    } else {
+      ++it;
     }
   }
 
-  // Update and check ARP time tracker timers
-  for ( auto& it : _arp_time_tracker ) {
-    auto timer = it.second;
-    timer.timer_tick( ms_since_last_tick );
+  for ( auto it = _arp_time_tracker.begin(); it != _arp_time_tracker.end(); ) {
+    it->second.timer_tick( ms_since_last_tick );
+    auto timer = it->second;
     if ( timer.timer_expired( ARP_RESPONSE_TTL_ms ) ) {
-      _arp_time_tracker.erase( it.first );
+      it = _arp_time_tracker.erase( it );
+    } else {
+      ++it;
     }
   }
 }
