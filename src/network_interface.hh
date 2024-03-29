@@ -8,6 +8,8 @@
 #include "ipv4_datagram.hh"
 #include "tcp_sender.hh"
 
+static constexpr size_t ARP_ENTRY_TTL_ms { 30'000 };
+static constexpr size_t ARP_RESPONSE_TTL_ms { 5'000 };
 
 class Timer
 {

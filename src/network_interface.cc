@@ -28,9 +28,6 @@ NetworkInterface::NetworkInterface( string_view name,
 void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Address& next_hop )
 {
   // Your code here.
-  (void)dgram;
-  (void)next_hop;
-
   uint32_t next_hop_ip_address = next_hop.ipv4_numeric();
   auto target_kv = _ARP_mapping.find( next_hop_ip_address );
 
@@ -64,8 +61,19 @@ void NetworkInterface::recv_frame( const EthernetFrame& frame )
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
-  // Your code here.
-  (void)ms_since_last_tick;
+  // Update and check ARP mapping timers
+  erase_if(_ARP_mapping, [&](auto&& item) noexcept -> bool {
+    Timer timer = item.second.second;
+    timer.timer_tick(ms_since_last_tick);
+    return timer.timer_expired(ARP_ENTRY_TTL_ms);
+  });
+
+  // Update and check ARP time tracker timers
+  erase_if(_arp_time_tracker, [&](auto&& item) noexcept -> bool {
+    Timer timer = item.second;
+    timer.timer_tick(ms_since_last_tick);
+    return timer.timer_expired(ARP_RESPONSE_TTL_ms);
+  });
 }
 
 /* util methods */
