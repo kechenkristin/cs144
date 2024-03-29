@@ -38,15 +38,16 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
     transmit( target_mac_frame );
   } else {
     // queue the IP datagram
-    _waiting_dgrams[next_hop_ip_address].emplace_back(dgram);
+    _waiting_dgrams[next_hop_ip_address].emplace_back( dgram );
 
-    if (_arp_time_tracker.contains(next_hop_ip_address))
+    if ( _arp_time_tracker.contains( next_hop_ip_address ) )
       return;
 
-    _arp_time_tracker.emplace(next_hop_ip_address, Timer{});
+    _arp_time_tracker.emplace( next_hop_ip_address, Timer {} );
     // broadcast and ARP request for the next hop's ethernet address
     ARPMessage arp_request = make_arp( ARPMessage::OPCODE_REQUEST, {}, next_hop_ip_address );
-    EthernetFrame broadcast = make_frame(ethernet_address_, ETHERNET_BROADCAST, EthernetHeader::TYPE_ARP, serialize(arp_request));
+    EthernetFrame broadcast
+      = make_frame( ethernet_address_, ETHERNET_BROADCAST, EthernetHeader::TYPE_ARP, serialize( arp_request ) );
     transmit( broadcast );
   }
 }
@@ -55,39 +56,46 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 void NetworkInterface::recv_frame( const EthernetFrame& frame )
 {
   // Your code here.
+  if ( frame.header.dst != ethernet_address_ and frame.header.dst != ETHERNET_BROADCAST ) {
+    return;
+  }
   // If the inbound payload is IPv4
-  if ( parse_EthernetFrame_type(frame) == EthernetHeader::TYPE_IPv4) {
+  if ( parse_EthernetFrame_type( frame ) == EthernetHeader::TYPE_IPv4 ) {
     InternetDatagram ip_dgram;
-    if ( parse(ip_dgram, frame.payload)) datagrams_received_.emplace(move(ip_dgram));
+    if ( parse( ip_dgram, frame.payload ) )
+      datagrams_received_.emplace( move( ip_dgram ) );
     return;
   }
 
   // If the inbound payload is ARP
-  else{
+  else {
     ARPMessage arp_msg;
-    if ( parse(arp_msg, frame.payload)) {
+    if ( parse( arp_msg, frame.payload ) ) {
 
-      const AddressNumeric sender_ip_address {arp_msg.sender_ip_address};
-      const EthernetAddress sender_ether_address {arp_msg.sender_ethernet_address};
+      const AddressNumeric sender_ip_address { arp_msg.sender_ip_address };
+      const EthernetAddress sender_ether_address { arp_msg.sender_ethernet_address };
 
       // learning
-      _ARP_mapping[sender_ip_address] = make_pair(sender_ether_address, Timer{});
+      _ARP_mapping[sender_ip_address] = make_pair( sender_ether_address, Timer {} );
 
       // if the ARP message is ARP request ask for our IP address, make our ARP message
-      if (arp_msg.opcode == ARPMessage::OPCODE_REQUEST && arp_msg.target_ip_address==ip_address_.ipv4_numeric()) {
-        ARPMessage arp_response = make_arp(ARPMessage::OPCODE_REPLY, sender_ether_address, sender_ip_address );
-        EthernetFrame ethernet_frame = make_frame(ethernet_address_, sender_ether_address, EthernetHeader::TYPE_ARP, serialize(arp_response));
-        transmit(ethernet_frame);
+      if ( arp_msg.opcode == ARPMessage::OPCODE_REQUEST
+           && arp_msg.target_ip_address == ip_address_.ipv4_numeric() ) {
+        ARPMessage arp_response = make_arp( ARPMessage::OPCODE_REPLY, sender_ether_address, sender_ip_address );
+        EthernetFrame ethernet_frame = make_frame(
+          ethernet_address_, sender_ether_address, EthernetHeader::TYPE_ARP, serialize( arp_response ) );
+        transmit( ethernet_frame );
       }
       // if the ARP message is ARP response
       else {
-        if (_waiting_dgrams.contains(sender_ip_address)) {
-          for (auto dgram: _waiting_dgrams[sender_ip_address]) {
-            EthernetFrame ethernet_frame = make_frame(ethernet_address_, sender_ether_address, EthernetHeader::TYPE_IPv4, serialize(dgram));
-            transmit(ethernet_frame);
+        if ( _waiting_dgrams.contains( sender_ip_address ) ) {
+          for ( auto dgram : _waiting_dgrams[sender_ip_address] ) {
+            EthernetFrame ethernet_frame = make_frame(
+              ethernet_address_, sender_ether_address, EthernetHeader::TYPE_IPv4, serialize( dgram ) );
+            transmit( ethernet_frame );
           }
-          _waiting_dgrams.erase(sender_ip_address);
-          _arp_time_tracker.erase(sender_ip_address);
+          _waiting_dgrams.erase( sender_ip_address );
+          _arp_time_tracker.erase( sender_ip_address );
         }
       }
     }
@@ -98,18 +106,22 @@ void NetworkInterface::recv_frame( const EthernetFrame& frame )
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
   // Update and check ARP mapping timers
-  erase_if(_ARP_mapping, [&](auto&& item) noexcept -> bool {
-    Timer timer = item.second.second;
-    timer.timer_tick(ms_since_last_tick);
-    return timer.timer_expired(ARP_ENTRY_TTL_ms);
-  });
+  for ( auto& it : _ARP_mapping ) {
+    auto timer = it.second.second;
+    timer.timer_tick( ms_since_last_tick );
+    if ( timer.timer_expired( ARP_ENTRY_TTL_ms ) ) {
+      _ARP_mapping.erase( it.first );
+    }
+  }
 
   // Update and check ARP time tracker timers
-  erase_if(_arp_time_tracker, [&](auto&& item) noexcept -> bool {
-    Timer timer = item.second;
-    timer.timer_tick(ms_since_last_tick);
-    return timer.timer_expired(ARP_RESPONSE_TTL_ms);
-  });
+  for ( auto& it : _arp_time_tracker ) {
+    auto timer = it.second;
+    timer.timer_tick( ms_since_last_tick );
+    if ( timer.timer_expired( ARP_RESPONSE_TTL_ms ) ) {
+      _arp_time_tracker.erase( it.first );
+    }
+  }
 }
 
 /* util methods */

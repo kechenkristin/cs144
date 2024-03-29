@@ -8,17 +8,17 @@
 #include "ipv4_datagram.hh"
 #include "tcp_sender.hh"
 
-static constexpr size_t ARP_ENTRY_TTL_ms { 30'000 };
-static constexpr size_t ARP_RESPONSE_TTL_ms { 5'000 };
+static constexpr size_t ARP_ENTRY_TTL_ms { 30 };
+static constexpr size_t ARP_RESPONSE_TTL_ms { 5 };
 
 class Timer
 {
 private:
-  size_t _ms{};
+  size_t _ms {};
 
 public:
-  void timer_tick(size_t ms_last_tick) {_ms += ms_last_tick;}
-  [[nodiscard]] bool timer_expired(size_t TTL_ms) const {return _ms >= TTL_ms;}
+  void timer_tick( size_t ms_last_tick ) { _ms += ms_last_tick; }
+  [[nodiscard]] bool timer_expired( size_t TTL_ms ) const { return _ms >= TTL_ms; }
 };
 
 // A "network interface" that connects IP (the internet layer, or network layer)
@@ -119,8 +119,5 @@ private:
                        const EthernetAddress& target_ethernet_address,
                        const uint32_t target_ip_address );
 
-  uint16_t parse_EthernetFrame_type( const EthernetFrame& frame) {return frame.header.type;}
+  uint16_t parse_EthernetFrame_type( const EthernetFrame& frame ) { return frame.header.type; }
 };
-
-
-
