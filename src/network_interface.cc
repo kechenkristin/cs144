@@ -55,7 +55,43 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 void NetworkInterface::recv_frame( const EthernetFrame& frame )
 {
   // Your code here.
-  (void)frame;
+  // If the inbound payload is IPv4
+  if ( parse_EthernetFrame_type(frame) == EthernetHeader::TYPE_IPv4) {
+    InternetDatagram ip_dgram;
+    if ( parse(ip_dgram, frame.payload)) datagrams_received_.emplace(move(ip_dgram));
+    return;
+  }
+
+  // If the inbound payload is ARP
+  else{
+    ARPMessage arp_msg;
+    if ( parse(arp_msg, frame.payload)) {
+
+      const AddressNumeric sender_ip_address {arp_msg.sender_ip_address};
+      const EthernetAddress sender_ether_address {arp_msg.sender_ethernet_address};
+
+      // learning
+      _ARP_mapping[sender_ip_address] = make_pair(sender_ether_address, Timer{});
+
+      // if the ARP message is ARP request ask for our IP address, make our ARP message
+      if (arp_msg.opcode == ARPMessage::OPCODE_REQUEST && arp_msg.target_ip_address==ip_address_.ipv4_numeric()) {
+        ARPMessage arp_response = make_arp(ARPMessage::OPCODE_REPLY, sender_ether_address, sender_ip_address );
+        EthernetFrame ethernet_frame = make_frame(ethernet_address_, sender_ether_address, EthernetHeader::TYPE_ARP, serialize(arp_response));
+        transmit(ethernet_frame);
+      }
+      // if the ARP message is ARP response
+      else {
+        if (_waiting_dgrams.contains(sender_ip_address)) {
+          for (auto dgram: _waiting_dgrams[sender_ip_address]) {
+            EthernetFrame ethernet_frame = make_frame(ethernet_address_, sender_ether_address, EthernetHeader::TYPE_IPv4, serialize(dgram));
+            transmit(ethernet_frame);
+          }
+          _waiting_dgrams.erase(sender_ip_address);
+          _arp_time_tracker.erase(sender_ip_address);
+        }
+      }
+    }
+  }
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method

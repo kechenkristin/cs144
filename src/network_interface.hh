@@ -114,9 +114,12 @@ private:
                             const EthernetAddress& dst,
                             const uint16_t type,
                             std::vector<std::string> payload );
+
   ARPMessage make_arp( const uint16_t opcode,
                        const EthernetAddress& target_ethernet_address,
                        const uint32_t target_ip_address );
+
+  uint16_t parse_EthernetFrame_type( const EthernetFrame& frame) {return frame.header.type;}
 };
 
 
