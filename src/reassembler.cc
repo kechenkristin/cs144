@@ -51,8 +51,8 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
     }
 
     // j is the last index of the data and if we have eof is true then we should set the flag to be true
-    if ( j + 1 == data.size()  && is_last_substring) {
-        _should_eof = true;
+    if ( j + 1 == data.size() && is_last_substring ) {
+      _should_eof = true;
     }
 
     if ( next( i ) == start_index ) {

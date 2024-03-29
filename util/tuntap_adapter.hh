@@ -9,14 +9,15 @@
 #include <utility>
 
 template<class T>
-concept TCPDatagramAdapter = requires( T a, TCPMessage seg ) {
+concept TCPDatagramAdapter = requires( T a, TCPMessage seg )
+{
   {
     a.write( seg )
-  } -> std::same_as<void>;
+    } -> std::same_as<void>;
 
   {
     a.read()
-  } -> std::same_as<std::optional<TCPMessage>>;
+    } -> std::same_as<std::optional<TCPMessage>>;
 };
 
 //! \brief A FD adapter for IPv4 datagrams read from and written to a TUN device

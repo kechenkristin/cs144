@@ -30,6 +30,28 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
   // Your code here.
   (void)dgram;
   (void)next_hop;
+
+  uint32_t next_hop_ip_address = next_hop.ipv4_numeric();
+  auto target_kv = _ARP_mapping.find( next_hop_ip_address );
+
+  if ( target_kv != _ARP_mapping.end() ) {
+    EthernetAddress target_ethernet_address = target_kv->second.first;
+    EthernetFrame target_mac_frame
+      = make_frame( ethernet_address_, target_ethernet_address, EthernetHeader::TYPE_IPv4, serialize( dgram ) );
+    transmit( target_mac_frame );
+  } else {
+    // queue the IP datagram
+    _waiting_dgrams[next_hop_ip_address].emplace_back(dgram);
+
+    if (_arp_time_tracker.contains(next_hop_ip_address))
+      return;
+
+    _arp_time_tracker.emplace(next_hop_ip_address, Timer{});
+    // broadcast and ARP request for the next hop's ethernet address
+    ARPMessage arp_request = make_arp( ARPMessage::OPCODE_REQUEST, {}, next_hop_ip_address );
+    EthernetFrame broadcast = make_frame(ethernet_address_, ETHERNET_BROADCAST, EthernetHeader::TYPE_ARP, serialize(arp_request));
+    transmit( broadcast );
+  }
 }
 
 //! \param[in] frame the incoming Ethernet frame
@@ -44,4 +66,32 @@ void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
   // Your code here.
   (void)ms_since_last_tick;
+}
+
+/* util methods */
+
+ARPMessage NetworkInterface::make_arp( const uint16_t opcode,
+                                       const EthernetAddress& target_ethernet_address,
+                                       const uint32_t target_ip_address )
+{
+  ARPMessage arp;
+  arp.opcode = opcode;
+  arp.sender_ethernet_address = ethernet_address_;
+  arp.sender_ip_address = ip_address_.ipv4_numeric();
+  arp.target_ethernet_address = target_ethernet_address;
+  arp.target_ip_address = target_ip_address;
+  return arp;
+}
+
+EthernetFrame NetworkInterface::make_frame( const EthernetAddress& src,
+                                            const EthernetAddress& dst,
+                                            const uint16_t type,
+                                            vector<string> payload )
+{
+  EthernetFrame frame;
+  frame.header.src = src;
+  frame.header.dst = dst;
+  frame.header.type = type;
+  frame.payload = std::move( payload );
+  return frame;
 }
