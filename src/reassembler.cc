@@ -1,5 +1,4 @@
 #include "reassembler.hh"
-#include <iostream>
 
 using namespace std;
 
@@ -16,10 +15,8 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
 
   // Corner case: when the data is empty. This is important
   // Because the below iteration does not consider
-  if ( data.empty() ) {
-    if ( is_last_substring ) {
-      _should_eof = true;
-    }
+  if ( data.empty() && is_last_substring ) {
+    _should_eof = true;
   }
 
   uint64_t data_index { 0 }; // The index of start of valid data, only apply to the passed string param
@@ -46,8 +43,10 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
   // STEP2: The real processing logic
   // first iterate, iterate the data(string) with the window(loop_size)
   for ( uint64_t i = loop_index, j = data_index; j < data_index + loop_size; i = next( i ), j++ ) {
-    if ( !_wait_map.contains( i ) ) {
-      _wait_map.insert( make_pair( i, data[j] ) );
+    if ( !_dirty[i] ) {
+      _window[i] = data[j];
+      _unassembled_bytes++;
+      _dirty[i] = true;
     }
 
     // j is the last index of the data and if we have eof is true then we should set the flag to be true
@@ -62,21 +61,22 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
 
   // second iterate, iterate through the _wait_map to construct the send_str
   string send_str {};
-  // using the next util to smartly captivate consecutive string in wait_map
-  for ( uint64_t i = start_index; _wait_map.contains( i ); i = next( i ) ) {
-    send_str.push_back( _wait_map[i] );
-    if ( next( i ) == start_index ) {
+  // using the next util to smartly captivate consecutive string in window
+  for ( size_t i = start_index; _dirty[i]; i = next( i ) ) {
+    send_str.push_back( _window[i] );
+    // we pushed all the data into to send_str
+    if ( next( i ) == start_index )
       break;
-    }
   }
 
   if ( !send_str.empty() ) {
     output_.writer().push( send_str );
     uint64_t written_num = send_str.size();
     // third iterate, erase data in wait_map
-    for ( uint64_t i = start_index, j = 0; j < written_num; i = next( i ), ++j ) {
-      _wait_map.erase( i );
+    for ( size_t i = start_index, j = 0; j < written_num; i = next( i ), ++j ) {
+      _dirty[i] = false;
     }
+    _unassembled_bytes -= written_num;
     _first_unassembled_index += written_num;
   }
 
@@ -88,5 +88,5 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
 uint64_t Reassembler::bytes_pending() const
 {
   // Your code here.
-  return _wait_map.size();
+  return _unassembled_bytes;
 }

@@ -19,8 +19,9 @@ public:
   Writer& writer();
   [[nodiscard]] const Writer& writer() const;
 
-  void set_error() { error_ = true; };       // Signal that the stream suffered an error.
+  void set_error() { error_ = true; };                     // Signal that the stream suffered an error.
   [[nodiscard]] bool has_error() const { return error_; }; // Has the stream had an error?
+  [[nodiscard]] uint64_t capacity() const { return capacity_; }
 
 protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
@@ -49,7 +50,7 @@ class Reader : public ByteStream
 {
 public:
   [[nodiscard]] std::string_view peek() const; // Peek at the next bytes in the buffer
-  void pop( uint64_t len );      // Remove `len` bytes from the buffer
+  void pop( uint64_t len );                    // Remove `len` bytes from the buffer
 
   [[nodiscard]] bool is_finished() const;        // Is the stream finished (closed and fully popped)?
   [[nodiscard]] uint64_t bytes_buffered() const; // Number of bytes currently buffered (pushed and not popped)
