@@ -1,5 +1,4 @@
 #include "byte_stream.hh"
-#include <cstring>
 #include <vector>
 
 using namespace std;

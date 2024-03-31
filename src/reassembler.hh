@@ -47,7 +47,7 @@ private:
   ByteStream output_; // the Reassembler writes to this ByteStream
 
   // additional attributes
-  uint64_t _capacity { output_.writer().available_capacity() };
+  uint64_t _capacity { output_.writer().available_capacity() }; // the overall capacity, shared by green and red
   uint64_t _first_unassembled_index { 0 }; // The index of the next byte expected in the stream
   std::map<size_t, char> _wait_map {};     // byte streams to be assembled.
   uint64_t next( uint64_t ptr ) { return ( ptr + 1 ) % _capacity; }
