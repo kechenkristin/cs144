@@ -51,6 +51,7 @@ TCPReceiverMessage TCPReceiver::send() const
   auto offset = 0;
   if ( _FIN && reassembler_.bytes_pending() == 0 )
     offset += 1;
+  // TODO: might be a bug here
   if ( _SYN ) {
     offset += 1;
     uint64_t stream_index = reassembler_.first_unassembled_index();

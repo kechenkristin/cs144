@@ -41,7 +41,7 @@ public:
   {}
 
   /* Generate an empty TCPSenderMessage */
-  TCPSenderMessage make_empty_message() const;
+  [[nodiscard]] TCPSenderMessage make_empty_message() const;
 
   /* Receive and process a TCPReceiverMessage from the peer's receiver */
   void receive( const TCPReceiverMessage& msg );
@@ -56,13 +56,13 @@ public:
   void tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit );
 
   // Accessors
-  uint64_t sequence_numbers_in_flight() const;  // How many sequence numbers are outstanding?
-  uint64_t consecutive_retransmissions() const; // How many consecutive *re*transmissions have happened?
+  [[nodiscard]] uint64_t sequence_numbers_in_flight() const;  // How many sequence numbers are outstanding?
+  [[nodiscard]] uint64_t consecutive_retransmissions() const; // How many consecutive *re*transmissions have happened?
   Writer& writer() { return input_.writer(); }
-  const Writer& writer() const { return input_.writer(); }
+  [[nodiscard]] const Writer& writer() const { return input_.writer(); }
 
   // Access input stream reader, but const-only (can't read from outside)
-  const Reader& reader() const { return input_.reader(); }
+  [[nodiscard]] const Reader& reader() const { return input_.reader(); }
 
 private:
   // Variables initialized in constructor

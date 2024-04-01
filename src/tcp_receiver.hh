@@ -17,13 +17,13 @@ public:
   void receive( TCPSenderMessage message );
 
   // The TCPReceiver sends TCPReceiverMessages to the peer's TCPSender.
-  TCPReceiverMessage send() const;
+  [[nodiscard]] TCPReceiverMessage send() const;
 
   // Access the output (only Reader is accessible non-const)
-  const Reassembler& reassembler() const { return reassembler_; }
+  [[nodiscard]] const Reassembler& reassembler() const { return reassembler_; }
   Reader& reader() { return reassembler_.reader(); }
-  const Reader& reader() const { return reassembler_.reader(); }
-  const Writer& writer() const { return reassembler_.writer(); }
+  [[nodiscard]] const Reader& reader() const { return reassembler_.reader(); }
+  [[nodiscard]] const Writer& writer() const { return reassembler_.writer(); }
 
 private:
   Reassembler reassembler_;
