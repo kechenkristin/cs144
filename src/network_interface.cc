@@ -31,12 +31,15 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
   uint32_t next_hop_ip_address = next_hop.ipv4_numeric();
   auto target_kv = _ARP_mapping.find( next_hop_ip_address );
 
+  // If the destination Ethernet address is already known, send it right away
   if ( target_kv != _ARP_mapping.end() ) {
     EthernetAddress target_ethernet_address = target_kv->second.first;
     EthernetFrame target_mac_frame
       = make_frame( ethernet_address_, target_ethernet_address, EthernetHeader::TYPE_IPv4, serialize( dgram ) );
     transmit( target_mac_frame );
-  } else {
+  }
+  // If the destination Ethernet address is unknown, broadcast an ARP request
+  else {
     // queue the IP datagram
     _waiting_dgrams[next_hop_ip_address].emplace_back( dgram );
 
@@ -86,10 +89,11 @@ void NetworkInterface::recv_frame( const EthernetFrame& frame )
           ethernet_address_, sender_ether_address, EthernetHeader::TYPE_ARP, serialize( arp_response ) );
         transmit( ethernet_frame );
       }
-      // if the ARP message is ARP response
+
+      // if the ARP message is ARP response, transmit the buffered IP Datagrams
       else {
         if ( _waiting_dgrams.contains( sender_ip_address ) ) {
-          for ( auto dgram : _waiting_dgrams[sender_ip_address] ) {
+          for ( const auto& dgram : _waiting_dgrams[sender_ip_address] ) {
             EthernetFrame ethernet_frame = make_frame(
               ethernet_address_, sender_ether_address, EthernetHeader::TYPE_IPv4, serialize( dgram ) );
             transmit( ethernet_frame );
