@@ -35,4 +35,9 @@ public:
 private:
   // The router's collection of network interfaces
   std::vector<std::shared_ptr<NetworkInterface>> _interfaces {};
+
+  // additional attributes
+  using info = std::pair<size_t, std::optional<Address>>;
+  std::array<std::unordered_map<uint32_t, info>, 32> _routing_table {};
+  [[nodiscard]] auto longest_prefix_alg( uint32_t ) const noexcept -> std::optional<info>;
 };

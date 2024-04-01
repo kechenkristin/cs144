@@ -1,7 +1,7 @@
 #include "router.hh"
 
 #include <iostream>
-#include <limits>
+#include <ranges>
 
 using namespace std;
 
@@ -20,11 +20,39 @@ void Router::add_route( const uint32_t route_prefix,
        << static_cast<int>( prefix_length ) << " => " << ( next_hop.has_value() ? next_hop->ip() : "(direct)" )
        << " on interface " << interface_num << "\n";
 
-  // Your code here.
+  _routing_table[prefix_length][std::rotr(route_prefix, 32 - prefix_length)] = {interface_num, next_hop};
 }
 
 // Go through all the interfaces, and route every incoming datagram to its proper outgoing interface.
 void Router::route()
 {
-  // Your code here.
+  for ( const auto& interface : _interfaces ) {
+    auto&& datagrams_received { interface->datagrams_received() };
+    while ( not datagrams_received.empty() ) {
+      InternetDatagram datagram { move( datagrams_received.front() ) };
+      datagrams_received.pop();
+
+      if ( datagram.header.ttl <= 1 ) {
+        continue;
+      }
+      datagram.header.ttl -= 1;
+      datagram.header.compute_checksum();
+
+      const optional<info>& mp { longest_prefix_alg( datagram.header.dst ) };
+      if ( not mp.has_value() ) {
+        continue;
+      }
+      const auto& [num, next_hop] { mp.value() };
+      _interfaces[num]->send_datagram( datagram,
+                                       next_hop.value_or( Address::from_ipv4_numeric( datagram.header.dst ) ) );
+    }
+  }
+}
+
+[[nodiscard]] auto Router::longest_prefix_alg( uint32_t addr ) const noexcept -> optional<info>
+{
+  auto adaptor = views::filter( [&addr]( const auto& mp ) { return mp.contains( addr >>= 1 ); } )
+                 | views::transform( [&addr]( const auto& mp ) -> info { return mp.at( addr ); } );
+  auto res { _routing_table | views::reverse | adaptor | views::take( 1 ) }; // just kidding
+  return res.empty() ? nullopt : optional<info> { res.front() };
 }
