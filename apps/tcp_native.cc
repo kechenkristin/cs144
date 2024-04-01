@@ -33,12 +33,12 @@ int main( int argc, char** argv )
     auto socket = [&] {
       if ( server_mode ) {
         // 创建欢迎socket
-        TCPSocket listening_socket;                    // create a TCP socket
-        listening_socket.set_reuseaddr();              // reuse the server's address as soon as the program quits
+        TCPSocket listening_socket;       // create a TCP socket
+        listening_socket.set_reuseaddr(); // reuse the server's address as soon as the program quits
         // 和本地端口捆绑
         listening_socket.bind( { args[2], args[3] } ); // bind to specified address
         // 在欢迎socket上阻塞式等待接收用户的连接
-        listening_socket.listen();                     // mark the socket as listening for incoming connections
+        listening_socket.listen(); // mark the socket as listening for incoming connections
         cerr << "DEBUG: Listening for incoming connection...\n";
         // 服务器接受来自用户端的请求 ,解除阻塞式等待,返回一个新的socket(与欢迎socket不一样),与客户端通信
         TCPSocket connected_socket = listening_socket.accept();

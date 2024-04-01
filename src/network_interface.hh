@@ -112,9 +112,9 @@ private:
 
   // util methods
   static EthernetFrame make_frame( const EthernetAddress& src,
-                            const EthernetAddress& dst,
-                            const uint16_t type,
-                            std::vector<std::string> payload );
+                                   const EthernetAddress& dst,
+                                   const uint16_t type,
+                                   std::vector<std::string> payload );
 
   ARPMessage make_arp( const uint16_t opcode,
                        const EthernetAddress& target_ethernet_address,

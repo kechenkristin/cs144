@@ -56,8 +56,9 @@ public:
   void tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit );
 
   // Accessors
-  [[nodiscard]] uint64_t sequence_numbers_in_flight() const;  // How many sequence numbers are outstanding?
-  [[nodiscard]] uint64_t consecutive_retransmissions() const; // How many consecutive *re*transmissions have happened?
+  [[nodiscard]] uint64_t sequence_numbers_in_flight() const; // How many sequence numbers are outstanding?
+  [[nodiscard]] uint64_t consecutive_retransmissions()
+    const; // How many consecutive *re*transmissions have happened?
   Writer& writer() { return input_.writer(); }
   [[nodiscard]] const Writer& writer() const { return input_.writer(); }
 
