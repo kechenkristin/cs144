@@ -1,10 +1,25 @@
 #pragma once
 
 #include <queue>
+#include <unordered_map>
 
 #include "address.hh"
 #include "ethernet_frame.hh"
 #include "ipv4_datagram.hh"
+#include "tcp_sender.hh"
+
+static constexpr size_t ARP_ENTRY_TTL_ms { 30'000 };
+static constexpr size_t ARP_RESPONSE_TTL_ms { 5'000 };
+
+class Timer
+{
+private:
+  size_t _ms {};
+
+public:
+  void timer_tick( size_t ms_last_tick ) { _ms += ms_last_tick; }
+  [[nodiscard]] bool timer_expired( size_t TTL_ms ) const { return _ms >= TTL_ms; }
+};
 
 // A "network interface" that connects IP (the internet layer, or network layer)
 // with Ethernet (the network access layer, or link layer).
@@ -81,4 +96,28 @@ private:
 
   // Datagrams that have been received
   std::queue<InternetDatagram> datagrams_received_ {};
+
+  // additional attributes
+  // ARP map, mapping between the sender's IP address and Ethernet address
+  using AddressNumeric = uint32_t;
+  // 以太网到 IP 地址的地址映射表
+  std::unordered_map<AddressNumeric, std::pair<EthernetAddress, Timer>> _ARP_mapping {};
+  // 标记某个 IP 地址解析请求是否在 5 秒内发出过
+  std::unordered_map<AddressNumeric, Timer> _arp_time_tracker {};
+  // 正在等待 ARP 响应的数据报，`key` 为目的 IP 地址
+  std::unordered_map<AddressNumeric, std::vector<InternetDatagram>> _waiting_dgrams {};
+
+  // a queue of IP datagram to be sent after the ARP reply
+
+  // util methods
+  static EthernetFrame make_frame( const EthernetAddress& src,
+                            const EthernetAddress& dst,
+                            const uint16_t type,
+                            std::vector<std::string> payload );
+
+  ARPMessage make_arp( const uint16_t opcode,
+                       const EthernetAddress& target_ethernet_address,
+                       const uint32_t target_ip_address );
+
+  static uint16_t parse_EthernetFrame_type( const EthernetFrame& frame ) { return frame.header.type; }
 };
