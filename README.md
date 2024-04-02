@@ -17,7 +17,7 @@ Side project for Stanford’s CS144 (Introduction to Computer Networking): Devel
 - **ARP Protocol and Router Implementation**: Developed a network interface with ARP protocol to translate between the Network Layer and Link Layer. Implemented auto-learning through broadcast for mapping IPv4 addresses to MAC addresses. Implemented the longest prefix-matching algorithm for router decision-making based on the routing table.
 
 
-  ![avatar](./pics/architecture.png)
+![avatar](./pics/architecture.png)
 
 
 
